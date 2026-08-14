@@ -64,6 +64,7 @@ extern int builtin_verify (cmd_context_t *ctx, int argc, char **argv);
 extern int builtin_doskey (cmd_context_t *ctx, int argc, char **argv);
 extern int builtin_vol    (cmd_context_t *ctx, int argc, char **argv);
 extern int builtin_starship(cmd_context_t *ctx, int argc, char **argv);
+extern int builtin_omp(cmd_context_t *ctx, int argc, char **argv);
 
 /* -------------------------------------------------------------------------
  * Builtin table
@@ -94,6 +95,8 @@ static const cmd_builtin_t builtin_table[] = {
     { "mkdir",    builtin_md      },
     { "mklink",   builtin_mklink  },
     { "move",     builtin_move    },
+    { "oh-my-posh", builtin_omp  },
+    { "omp",      builtin_omp    },
     { "path",     builtin_path    },
     { "pause",    builtin_pause   },
     { "popd",     builtin_popd    },

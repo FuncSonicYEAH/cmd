@@ -123,6 +123,11 @@ typedef struct cmd_context {
     int        starship;                /* 1 = render prompt via starship   */
     long long  starship_line_start_ms;  /* monotonic ms when last line was submitted */
 
+    /* --- oh-my-posh prompt --- */
+    int        omp;                     /* 1 = render prompt via oh-my-posh */
+    char      *omp_config;              /* config path passed via --config (heap) */
+    long long  omp_line_start_ms;       /* monotonic ms when last line was submitted */
+
     /* --- install prefix (for autorun, etc.) --- */
     char prefix[CMD_MAX_PATH];
 } cmd_context_t;
@@ -203,5 +208,8 @@ void cmd_restore_redir(cmd_context_t *ctx,
 /* bstarship.c */
 int  cmd_starship_prompt(cmd_context_t *ctx, char *out, size_t out_size);
 long long cmd_starship_monotonic_ms(void);
+
+/* bomp.c */
+int  cmd_omp_prompt(cmd_context_t *ctx, char *out, size_t out_size);
 
 #endif

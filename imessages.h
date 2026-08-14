@@ -75,6 +75,7 @@ typedef enum {
     MSG_ERR_START_NO_DISPLAY,
     MSG_ERR_VERIFY_ARG,
     MSG_ERR_STARSHIP_NOT_FOUND,
+    MSG_ERR_OMP_NOT_FOUND,
 
     /* Prompts and input requests */
     MSG_ASK_OVERWRITE,
@@ -144,6 +145,7 @@ typedef enum {
     MSG_HELP_VOL,
     MSG_HELP_CMD,
     MSG_HELP_STARSHIP,
+    MSG_HELP_OMP,
 
     MSG_COUNT
 } cmd_msg_id_t;
