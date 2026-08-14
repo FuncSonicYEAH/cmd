@@ -214,6 +214,11 @@ IF NOT "%~1"=="" GOTO again
 缺少 `fnmatch(3)`、`settimeofday(2)`、`setpriority(2)` 或
 `open_memstream(3)` 的系统由 `lsysport.c` 中的移植层提供支持。
 
+## 作者
+
+- **ChenPi11** —— `cmd` 项目原作者。
+- **FuncSonicYEAH** —— 维护本 fork，新增 starship 提示符与交互式编辑提示。
+
 ## 许可证
 
 GNU 通用公共许可证 **第 3 版或更高版本** —— 参见 [LICENSE](LICENSE)。

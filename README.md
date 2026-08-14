@@ -235,6 +235,12 @@ possible. Systems without `fnmatch(3)`, `settimeofday(2)`,
 `setpriority(2)`, or `open_memstream(3)` are covered by the portability
 layer in `lsysport.c`.
 
+## Authors
+
+- **ChenPi11** — original author of the `cmd` project.
+- **FuncSonicYEAH** — maintains this fork, adding the starship prompt and
+  the interactive editing hints.
+
 ## License
 
 GNU General Public License **version 3 or later** — see [LICENSE](LICENSE).

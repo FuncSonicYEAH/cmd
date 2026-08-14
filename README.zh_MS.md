@@ -206,6 +206,11 @@ SETLOCAL SHIFT START TIME TITLE
 "setpriority（2）"或"open_memstream（3）"由可移植性覆盖
 在"lsysport.c"中层。
 
+## 作者
+
+**ChenPi11** — 'cmd' 项目的原始作者。
+**FuncSonicYEAH** — 维护此 fork，并添加了 starship 提示符和交互式编辑提示。
+
 ## 许可证
 
 GNU 通用公共许可证 **版本3或更高版本** — 参见 [LICENSE]（LICENSE）。
