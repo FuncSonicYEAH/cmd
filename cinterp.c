@@ -293,6 +293,13 @@ void cmd_context_free(cmd_context_t *ctx)
 
     /* Shutdown line editing and save history */
     libcmd_readline_shutdown();
+
+    /* Free oh-my-posh config path */
+    if (ctx->omp_config)
+    {
+        free(ctx->omp_config);
+        ctx->omp_config = NULL;
+    }
 }
 
 /* -------------------------------------------------------------------------
@@ -311,6 +318,17 @@ static void render_prompt(cmd_context_t *ctx, FILE *out)
     if (ctx->starship) {
         char sbuf[16384];
         if (cmd_starship_prompt(ctx, sbuf, sizeof(sbuf)) > 0) {
+            fputs(sbuf, out);
+            fflush(out);
+            return;
+        }
+    }
+
+    /* Oh My Posh mode: delegate to the external `oh-my-posh print primary`
+     * program, like starship above. */
+    if (ctx->omp) {
+        char sbuf[16384];
+        if (cmd_omp_prompt(ctx, sbuf, sizeof(sbuf)) > 0) {
             fputs(sbuf, out);
             fflush(out);
             return;
@@ -825,10 +843,10 @@ int cmd_run_interactive(cmd_context_t *ctx)
             prompt_base = prompt;
         }
 
-        /* Starship prompts are multi-line: print every line except the last
-         * directly, and let the line editor own only the final prompt line
-         * (the line editor is single-line oriented). */
-        if (ctx->starship && prompt && prompt[0])
+        /* Starship / Oh My Posh prompts are multi-line: print every line
+         * except the last directly, and let the line editor own only the
+         * final prompt line (the line editor is single-line oriented). */
+        if ((ctx->starship || ctx->omp) && prompt && prompt[0])
         {
             size_t plen = strlen(prompt);
             char *nl;
@@ -888,10 +906,12 @@ int cmd_run_interactive(cmd_context_t *ctx)
                 line[--len] = '\0';
         }
 
-        /* Starship: record when this line was submitted, so the next prompt
-         * can report how long its command took. */
+        /* Starship / Oh My Posh: record when this line was submitted, so the
+         * next prompt can report how long its command took. */
         if (ctx->starship)
             ctx->starship_line_start_ms = cmd_starship_monotonic_ms();
+        if (ctx->omp)
+            ctx->omp_line_start_ms = cmd_starship_monotonic_ms();
 
         cmd_run_line(ctx, line);
     }

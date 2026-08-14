@@ -72,6 +72,7 @@ static void lang_en_us_init(const char *table[MSG_COUNT])
     table[MSG_ERR_START_NO_DISPLAY] = "START: no graphical display available (set DISPLAY or WAYLAND_DISPLAY)\n";
     table[MSG_ERR_VERIFY_ARG] = "VERIFY must be ON or OFF.\n";
     table[MSG_ERR_STARSHIP_NOT_FOUND] = "Starship is not installed or not in PATH. Install it from https://starship.rs and try again.\n";
+    table[MSG_ERR_OMP_NOT_FOUND] = "Oh My Posh is not installed or not in PATH. Install it from https://ohmyposh.dev and try again.\n";
     table[MSG_ASK_OVERWRITE] = "Overwrite %s? (Y/N) ";
     table[MSG_ASK_DELETE] = "%s, Delete (Y/N)?";
     table[MSG_ASK_RD_CONFIRM] = "%s, Are you sure (Y/N)? ";
@@ -430,5 +431,20 @@ static void lang_en_us_init(const char *table[MSG_COUNT])
         "\n"
         "Starship renders the prompt as an external program, so the PROMPT variable\n"
         "is ignored while it is active. See https://starship.rs for configuration.\n";
+    table[MSG_HELP_OMP] =
+        "Controls the Oh My Posh cross-shell prompt.\n"
+        "\n"
+        "OMP [init [config]|off] [/?]\n"
+        "\n"
+        "  init [config]  Enable the Oh My Posh prompt (requires the 'oh-my-posh'\n"
+        "                 binary in PATH).  An optional config file path is passed\n"
+        "                 to oh-my-posh via --config; otherwise the default theme\n"
+        "                 (or $POSH_THEME) is used.\n"
+        "  off            Disable the Oh My Posh prompt and restore the normal prompt.\n"
+        "\n"
+        "With no arguments, shows whether the Oh My Posh prompt is enabled.\n"
+        "\n"
+        "Oh My Posh renders the prompt as an external program, so the PROMPT variable\n"
+        "is ignored while it is active. See https://ohmyposh.dev for configuration.\n";
 }
 #endif

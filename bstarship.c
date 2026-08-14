@@ -120,6 +120,7 @@ int builtin_starship(cmd_context_t *ctx, int argc, char **argv)
 
         ctx->starship = 1;
         ctx->starship_line_start_ms = 0;
+        ctx->omp = 0;  /* starship and oh-my-posh are mutually exclusive */
         libcmd_setenv("STARSHIP_SHELL", "cmd", 1);
         if (libcmd_getenv("STARSHIP_SESSION_KEY") == NULL) {
             static const char chars[] =
