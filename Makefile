@@ -12,34 +12,38 @@ LN ?= ln -sfn
 CFLAGS ?= -O3 -Wall -Wextra -Wpedantic
 LDFLAGS ?=
 PREFIX ?= /usr/local
+BUILD_DIR ?= build
 
 SRCS = $(wildcard *.c)
-CMD_OBJS = $(patsubst %.c,%.cmd.o,$(SRCS))
-COMMAND_OBJS = $(patsubst %.c,%.COMMAND.o,$(SRCS))
+CMD_OBJS = $(patsubst %.c,$(BUILD_DIR)/%.cmd.o,$(SRCS))
+COMMAND_OBJS = $(patsubst %.c,$(BUILD_DIR)/%.COMMAND.o,$(SRCS))
 
 .PHONY: all
-all: cmd.exe COMMAND.COM
+all: $(BUILD_DIR)/cmd.exe $(BUILD_DIR)/COMMAND.COM
 
-%.cmd.o: %.c
+$(BUILD_DIR)/%.cmd.o: %.c
+	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-cmd.exe : $(CMD_OBJS)
+$(BUILD_DIR)/cmd.exe : $(CMD_OBJS)
 	$(CC) $(LDFLAGS) $^ -o $@
 
-%.COMMAND.o: %.c
+$(BUILD_DIR)/%.COMMAND.o: %.c
+	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@ -DENABLE_AUTOEXEC=1
 
-COMMAND.COM: $(COMMAND_OBJS)
+$(BUILD_DIR)/COMMAND.COM: $(COMMAND_OBJS)
 	$(CC) $(LDFLAGS) $^ -o $@
 
 .PHONY: clean
 clean:
-	$(RM) cmd.exe COMMAND.COM $(CMD_OBJS) $(COMMAND_OBJS)
+	$(RM) -r $(BUILD_DIR)
 
 .PHONY: install
 install: all
-	$(INSTALL) -m 755 cmd.exe $(PREFIX)/bin/
-	$(INSTALL) -m 755 COMMAND.COM $(PREFIX)/bin/
+	$(INSTALL) -d $(PREFIX)/bin
+	$(INSTALL) -m 755 $(BUILD_DIR)/cmd.exe $(PREFIX)/bin/
+	$(INSTALL) -m 755 $(BUILD_DIR)/COMMAND.COM $(PREFIX)/bin/
 	$(LN) $(PREFIX)/bin/cmd.exe $(PREFIX)/bin/cmd
 	@echo "Successfully installed to $(PREFIX)"
 	@echo "You may want to copy AUTOEXEC.BAT to your root directory so that COMMAND.COM is automatically executed when you start COMMAND.COM."

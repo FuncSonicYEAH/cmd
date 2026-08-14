@@ -95,6 +95,8 @@
   初始化脚本，以及供 `COMMAND.COM` 使用的 `AUTOEXEC.BAT`。
 - **本地化界面** —— 支持英文与简体中文，依据 `LC_ALL` / `LC_MESSAGES` /
   `LANG` 环境变量自动选择。
+- **Starship 提示符** —— 可选用 [Starship](https://starship.rs)
+  跨 shell 提示符。
 - **两种形态** —— 标准解释器 `cmd.exe`，以及保留经典 MS-DOS AutoExec
   行为的 `COMMAND.COM`。
 - **零外部依赖** —— C89、一个 POSIX.1 libc，再无其他。
@@ -152,8 +154,24 @@ FTYPE        GOTO         IF           MD / MKDIR   MKLINK
 MOVE         PATH         PAUSE        POPD         PROMPT
 PUSHD        RD / RMDIR   REM          REN / RENAME SET
 SETLOCAL     SHIFT        START        TIME         TITLE
-TYPE         VER          VERIFY       VOL
+TYPE         VER          VERIFY       VOL          STARSHIP
 ```
+
+## Starship 提示符
+
+若已安装 [Starship](https://starship.rs) 且其位于 `PATH` 中，可将交互式
+提示符交由它渲染：
+
+```bat
+starship init      REM 启用 Starship 提示符
+starship           REM 显示其是否已启用
+starship off       REM 恢复普通提示符
+```
+
+`starship` 每次显示提示符时都会运行 `starship prompt`，并像其他 shell
+一样传入退出状态与命令耗时。其它 `starship` 子命令（`toggle`、
+`config`、`session` 等）会转发给真实的 starship 程序。如需自动启用，
+可将 `starship init` 添加到 [AutoRun](#文件) 脚本或 `AUTOEXEC.BAT` 中。
 
 ## 批处理文件
 

@@ -98,6 +98,8 @@ even classic System V.
   `$PREFIX/etc/cmd/AutoRun/`, plus `AUTOEXEC.BAT` for `COMMAND.COM`.
 - **Localised UI** — English and Simplified Chinese, selected from the
   `LC_ALL` / `LC_MESSAGES` / `LANG` environment.
+- **Starship prompt** — optional integration with the
+  [Starship](https://starship.rs) cross-shell prompt.
 - **Two personalities** — `cmd.exe` for the standard interpreter and
   `COMMAND.COM` with classic MS-DOS AutoExec behaviour.
 - **No external dependencies** — C89, a POSIX.1 libc, and nothing else.
@@ -155,8 +157,41 @@ FTYPE        GOTO         IF           MD / MKDIR   MKLINK
 MOVE         PATH         PAUSE        POPD         PROMPT
 PUSHD        RD / RMDIR   REM          REN / RENAME SET
 SETLOCAL     SHIFT        START        TIME         TITLE
-TYPE         VER          VERIFY       VOL
+TYPE         VER          VERIFY       VOL          STARSHIP
 ```
+
+## Starship prompt
+
+If the [Starship](https://starship.rs) binary is installed and in `PATH`,
+the interactive prompt can be rendered by it:
+
+```bat
+starship init      REM enable the Starship prompt
+starship           REM show whether it is enabled
+starship off       REM restore the normal prompt
+```
+
+`starship` runs `starship prompt` on every prompt, passing the exit
+status and command duration like other shells. Any other `starship`
+subcommand (`toggle`, `config`, `session`, ...) is forwarded to the real
+binary. Add `starship init` to an [AutoRun](#files) script or
+`AUTOEXEC.BAT` to enable it automatically.
+
+## Interactive hints
+
+While editing a line, two opt-in features (controlled by environment
+variables, so you can turn them on from an [AutoRun](#files) script or
+`AUTOEXEC.BAT`):
+
+- `OMUC_SUGGEST=on` — fish-style history suggestions: the most recent
+  history command that starts with the current line is shown dimmed after
+  the cursor; press `Right` or `Ctrl+F` to accept it.
+- `OMUC_CHECK=on` — the first token is painted green when it names an
+  existing command (builtin, `PATH` program, or file) and red when not.
+
+Both are read on every key press, so changing them takes effect
+immediately. They are used by the `suggest` plugin of the
+`oh my unix cmd` framework.
 
 ## Batch Files
 

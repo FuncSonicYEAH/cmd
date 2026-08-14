@@ -233,6 +233,10 @@ void libcmd_readline_init(void)
     /* Register tab completion callback */
     linenoiseSetCompletionCallback(linenoise_completion_callback);
 
+    /* Interactive hints: history suggestions + command-name colouring.
+     * They are opt-in (controlled by OMUC_SUGGEST / OMUC_CHECK). */
+    libcmd_suggest_init();
+
     /* Enable multi-line mode so long commands that wrap to the next
      * terminal row are handled correctly (cursor positioning across
      * rows uses CUU/CUD escape sequences instead of assuming the

@@ -63,6 +63,7 @@ extern int builtin_ver    (cmd_context_t *ctx, int argc, char **argv);
 extern int builtin_verify (cmd_context_t *ctx, int argc, char **argv);
 extern int builtin_doskey (cmd_context_t *ctx, int argc, char **argv);
 extern int builtin_vol    (cmd_context_t *ctx, int argc, char **argv);
+extern int builtin_starship(cmd_context_t *ctx, int argc, char **argv);
 
 /* -------------------------------------------------------------------------
  * Builtin table
@@ -106,6 +107,7 @@ static const cmd_builtin_t builtin_table[] = {
     { "set",      builtin_set     },
     { "setlocal", builtin_setlocal},
     { "shift",    builtin_shift   },
+    { "starship", builtin_starship},
     { "start",    builtin_start   },
     { "time",     builtin_time_cmd},
     { "title",    builtin_title   },

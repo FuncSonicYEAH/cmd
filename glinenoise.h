@@ -101,11 +101,19 @@ void linenoiseSetFreeHintsCallback(linenoiseFreeHintsCallback *);
 void linenoiseAddCompletion(linenoiseCompletions *, const char *);
 void linenoiseSetCompletionEnabled(int on);
 
+/* Command-colour callback.  Given the visible edited line (buf, len),
+ * return the ANSI SGR colour (e.g. 31 red / 32 green) used to paint the
+ * first token of the line, or 0 to leave the line uncoloured. */
+typedef int(linenoiseCmdColorCallback)(const char *, size_t);
+void linenoiseSetCmdColorCallback(linenoiseCmdColorCallback *fn);
+
 /* History API. */
 int linenoiseHistoryAdd(const char *line);
 int linenoiseHistorySetMaxLen(int len);
 int linenoiseHistorySave(const char *filename);
 int linenoiseHistoryLoad(const char *filename);
+int linenoiseHistoryLength(void);
+const char *linenoiseHistoryGet(int index);
 
 /* Other utilities. */
 void linenoiseClearScreen(void);

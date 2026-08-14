@@ -242,6 +242,10 @@ MSG_ERR_VERIFY_ARG
 "VERIFY 须为 ON 或 OFF。\n"
 ---
 
+MSG_ERR_STARSHIP_NOT_FOUND
+"未得 Starship，或其不在 PATH 中。请自 https://starship.rs 安装而后再试。\n"
+---
+
 MSG_ASK_OVERWRITE
 "覆 %s 乎？(Y/N)? "
 ---
@@ -721,3 +725,17 @@ MSG_HELP_CMD
 "  /F:OFF  禁文与目录名补全 (默认)。\n"
 "  /V:ON   启延迟环境变量扩展。\n"
 "  /V:OFF  禁延迟环境变量扩展 (默认)。\n"
+---
+
+MSG_HELP_STARSHIP
+"司 Starship 跨 shell 之提示符。\n"
+"\n"
+"STARSHIP [init|off] [/?]\n"
+"\n"
+"  init  启 Starship 提示符 (需 PATH 中有 'starship' 可执行者)。\n"
+"  off   废 Starship 提示符，复其常制。\n"
+"\n"
+"无参数则示其启废。\n"
+"\n"
+"Starship 以外在程序渲染提示符，方其用时，PROMPT 变量不效。\n"
+"配置详见 https://starship.rs。\n"

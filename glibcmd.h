@@ -770,6 +770,14 @@ void libcmd_readline_set_signal_hook(int (*hook)(void));
  */
 void libcmd_readline_set_file_completion(int on);
 
+/*
+ * libcmd_suggest_init - install the interactive editing hints
+ * (fish-style history suggestions and command-name colouring).  The
+ * features stay inert until OMUC_SUGGEST / OMUC_CHECK are turned on.
+ * Must be called after libcmd_readline_init().
+ */
+void libcmd_suggest_init(void);
+
 /* -------------------------------------------------------------------------
  * Memory streams (replacement for the GNU open_memstream)
  * ---------------------------------------------------------------------- */

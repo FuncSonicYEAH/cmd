@@ -304,6 +304,19 @@ static void render_prompt(cmd_context_t *ctx, FILE *out)
     const char *p = ctx->prompt_string;
     char cwd[CMD_MAX_PATH];
 
+    /* Starship mode: delegate to the external `starship prompt` program.
+     * The output may be multi-line; cmd_run_interactive splits off the
+     * final line for the line editor.  Fall back to the normal prompt if
+     * starship cannot be run. */
+    if (ctx->starship) {
+        char sbuf[16384];
+        if (cmd_starship_prompt(ctx, sbuf, sizeof(sbuf)) > 0) {
+            fputs(sbuf, out);
+            fflush(out);
+            return;
+        }
+    }
+
     while (*p)
     {
         if (*p == '$')
@@ -782,7 +795,8 @@ int cmd_run_interactive(cmd_context_t *ctx)
     while (!ctx->should_exit)
     {
         char *result;
-        char *prompt = NULL;
+        char *prompt = NULL;      /* rendered prompt handed to the line editor */
+        char *prompt_base = NULL; /* original buffer of the memstream to free  */
         size_t prompt_len = 0;
 
         /* Ctrl+C during command execution: the terminal already echoed
@@ -808,6 +822,27 @@ int cmd_run_interactive(cmd_context_t *ctx)
                 render_prompt(ctx, m);
                 libcmd_memstream_close(m);
             }
+            prompt_base = prompt;
+        }
+
+        /* Starship prompts are multi-line: print every line except the last
+         * directly, and let the line editor own only the final prompt line
+         * (the line editor is single-line oriented). */
+        if (ctx->starship && prompt && prompt[0])
+        {
+            size_t plen = strlen(prompt);
+            char *nl;
+            while (plen > 0 && (prompt[plen - 1] == '\n' || prompt[plen - 1] == '\r'))
+                prompt[--plen] = '\0';
+            nl = strrchr(prompt, '\n');
+            if (nl)
+            {
+                *nl = '\0';
+                fputs(prompt, stdout);
+                fputc('\n', stdout);
+                fflush(stdout);
+                prompt = nl + 1;
+            }
         }
 
         /* Catch Ctrl+Z only while readline is editing: it is echoed as
@@ -832,7 +867,7 @@ int cmd_run_interactive(cmd_context_t *ctx)
             result = libcmd_readline("", line, sizeof(line));
         }
 
-        free(prompt);
+        free(prompt_base);
 
         if (result == NULL)
         {
@@ -852,6 +887,11 @@ int cmd_run_interactive(cmd_context_t *ctx)
             while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r'))
                 line[--len] = '\0';
         }
+
+        /* Starship: record when this line was submitted, so the next prompt
+         * can report how long its command took. */
+        if (ctx->starship)
+            ctx->starship_line_start_ms = cmd_starship_monotonic_ms();
 
         cmd_run_line(ctx, line);
     }

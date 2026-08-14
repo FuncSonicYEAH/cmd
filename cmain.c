@@ -296,6 +296,24 @@ int main(int argc, char **argv)
     /* Execute AutoRun scripts unless /D was given */
     if (!ctx->disable_autorun) {
         libcmd_exec_autorun(ctx->prefix, cmd_autorun_callback, ctx);
+
+        /* Per-user AutoRun hook (~/.cmd/autorun.bat), mirroring the
+         * per-user AutoRun that real cmd.exe supports via HKCU. Run
+         * after the system AutoRun scripts. */
+        {
+            const char *home = libcmd_getenv("HOME");
+            if (home != NULL && home[0] != '\0') {
+                char user_autorun[CMD_MAX_PATH];
+                libcmd_sprintf_s(user_autorun, sizeof(user_autorun),
+                                 "%s/.cmd/autorun.bat", home);
+                if (libcmd_access(user_autorun, 0) == 0) {
+                    char *bat_argv[2];
+                    bat_argv[0] = user_autorun;
+                    bat_argv[1] = NULL;
+                    cmd_run_file(ctx, user_autorun, 1, bat_argv);
+                }
+            }
+        }
     }
 
 #ifdef ENABLE_AUTOEXEC

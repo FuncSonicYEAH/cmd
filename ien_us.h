@@ -71,6 +71,7 @@ static void lang_en_us_init(const char *table[MSG_COUNT])
     table[MSG_ERR_START_FAILED] = "START: failed to start '%s'\n";
     table[MSG_ERR_START_NO_DISPLAY] = "START: no graphical display available (set DISPLAY or WAYLAND_DISPLAY)\n";
     table[MSG_ERR_VERIFY_ARG] = "VERIFY must be ON or OFF.\n";
+    table[MSG_ERR_STARSHIP_NOT_FOUND] = "Starship is not installed or not in PATH. Install it from https://starship.rs and try again.\n";
     table[MSG_ASK_OVERWRITE] = "Overwrite %s? (Y/N) ";
     table[MSG_ASK_DELETE] = "%s, Delete (Y/N)?";
     table[MSG_ASK_RD_CONFIRM] = "%s, Are you sure (Y/N)? ";
@@ -417,5 +418,17 @@ static void lang_en_us_init(const char *table[MSG_COUNT])
         "  /V:ON   Enable delayed environment variable expansion.\n"
         "  /V:OFF  Disable delayed environment variable expansion (default).\n"
         "\n";
+    table[MSG_HELP_STARSHIP] =
+        "Controls the Starship cross-shell prompt.\n"
+        "\n"
+        "STARSHIP [init|off] [/?]\n"
+        "\n"
+        "  init   Enable the Starship prompt (requires the 'starship' binary in PATH).\n"
+        "  off    Disable the Starship prompt and restore the normal prompt.\n"
+        "\n"
+        "With no arguments, shows whether the Starship prompt is enabled.\n"
+        "\n"
+        "Starship renders the prompt as an external program, so the PROMPT variable\n"
+        "is ignored while it is active. See https://starship.rs for configuration.\n";
 }
 #endif

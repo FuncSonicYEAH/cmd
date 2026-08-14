@@ -140,6 +140,7 @@ static linenoiseCompletionCallback *completionCallback = NULL;
 int linenoiseCompletionEnabled = 0;
 static linenoiseHintsCallback *hintsCallback = NULL;
 static linenoiseFreeHintsCallback *freeHintsCallback = NULL;
+static linenoiseCmdColorCallback *cmdColorCallback = NULL;
 static char *linenoiseReadLine(FILE *fp, int *err);
 static char *linenoiseNoTTY(void);
 static void refreshLineWithCompletion(struct linenoiseState *ls, linenoiseCompletions *lc, int flags);
@@ -874,6 +875,13 @@ void linenoiseSetFreeHintsCallback(linenoiseFreeHintsCallback *fn) {
     freeHintsCallback = fn;
 }
 
+/* Register the callback used to paint the first token of the edited line
+ * (e.g. green for an existing command, red for an unknown one).  The
+ * callback returns the ANSI SGR colour, or 0 for no colouring. */
+void linenoiseSetCmdColorCallback(linenoiseCmdColorCallback *fn) {
+    cmdColorCallback = fn;
+}
+
 /* This function is used by the callback function registered by the user
  * in order to add completion options given the input string when the
  * user typed <tab>. See the example.c source code for a very easy to
@@ -1258,6 +1266,47 @@ void refreshShowHints(struct abuf *ab, struct linenoiseState *l, int pwidth, siz
     }
 }
 
+/* Append the edited line to the output buffer.  When colour_cmd is set and
+ * a command-colour callback is installed, the first token (the command
+ * name) is painted with the colour the callback returns.  maskmode renders
+ * one '*' per character and never colours.  colour_cmd is cleared when the
+ * visible buffer has been left-trimmed by horizontal scrolling, in which
+ * case the first token is no longer the command name. */
+static void refreshAppendLine(struct abuf *ab, const char *buf, size_t len,
+                              int mask, int colour_cmd)
+{
+    size_t i;
+    char seq[16];
+
+    if (mask) {
+        i = 0;
+        while (i < len) {
+            abAppend(ab,"*",1);
+            i += utf8NextCharLen(buf,i,len);
+        }
+        return;
+    }
+
+    if (colour_cmd && cmdColorCallback != NULL) {
+        int color = cmdColorCallback(buf,len);
+        if (color > 0) {
+            /* Paint a complete first token (up to the first space/tab);
+             * skip when the line is empty or whitespace-led. */
+            i = 0;
+            while (i < len && buf[i] != ' ' && buf[i] != '\t') i++;
+            if (i > 0) {
+                libcmd_sprintf_s(seq,sizeof(seq),"\033[%dm",color);
+                abAppend(ab,seq,strlen(seq));
+                abAppend(ab,buf,i);
+                abAppend(ab,"\033[0m",4);
+                abAppend(ab,buf+i,len-i);
+                return;
+            }
+        }
+    }
+    abAppend(ab,buf,len);
+}
+
 /* Single line low level line refresh.
  *
  * Rewrite the currently edited line accordingly to the buffer content,
@@ -1318,16 +1367,9 @@ static void refreshSingleLine(struct linenoiseState *l, int flags) {
     if (flags & REFRESH_WRITE) {
         /* Write the prompt and the current buffer content */
         abAppend(&ab,l->prompt,l->plen);
-        if (maskmode == 1) {
-            /* In mask mode, we output one '*' per UTF-8 character, not byte */
-            size_t i = 0;
-            while (i < len) {
-                abAppend(&ab,"*",1);
-                i += utf8NextCharLen(buf, i, len);
-            }
-        } else {
-            abAppend(&ab,buf,len);
-        }
+        /* Colour the command name unless the buffer was left-trimmed by
+         * horizontal scrolling. */
+        refreshAppendLine(&ab,buf,len,maskmode,buf == render);
         /* Show hints if any. */
         refreshShowHints(&ab,l,pwidth,fullwidth);
     }
@@ -1405,17 +1447,8 @@ static void refreshMultiLine(struct linenoiseState *l, int flags) {
 
     if (flags & REFRESH_WRITE) {
         /* Write the prompt and the current buffer content */
-        abAppend(&ab,l->prompt,l->plen);
-        if (maskmode == 1) {
-            /* In mask mode, output one '*' per UTF-8 character, not byte */
-            size_t i = 0;
-            while (i < render_len) {
-                abAppend(&ab,"*",1);
-                i += utf8NextCharLen(render, i, render_len);
-            }
-        } else {
-            abAppend(&ab,render,render_len);
-        }
+abAppend(&ab,l->prompt,l->plen);
+        refreshAppendLine(&ab,render,render_len,maskmode,1);
 
         /* Show hints if any. */
         refreshShowHints(&ab,l,pwidth,bufwidth);
@@ -1613,6 +1646,34 @@ void linenoiseEditMoveEnd(struct linenoiseState *l) {
         l->pos = l->len;
         refreshLine(l);
     }
+}
+
+/* Accept the currently displayed hint: when a hints callback is installed,
+ * the cursor sits at the end of the line and a hint is available, append
+ * the hint to the line and repaint.  Returns 1 when the hint was accepted,
+ * 0 otherwise (the caller should keep its normal behaviour). */
+static int linenoiseHintAccept(struct linenoiseState *l) {
+    int color = -1, bold = 0;
+    char *hint;
+    size_t hintlen;
+
+    if (hintsCallback == NULL || l->pos != l->len) return 0;
+    hint = hintsCallback(l->buf,&color,&bold);
+    if (hint == NULL) return 0;
+    hintlen = strlen(hint);
+    if (hintlen > 0 && l->len + hintlen <= (size_t)LINENOISE_MAX_LINE &&
+        linenoiseEditGrow(l,l->len+hintlen) == 0)
+    {
+        memcpy(l->buf+l->len,hint,hintlen);
+        l->len += hintlen;
+        l->pos = l->len;
+        l->buf[l->len] = '\0';
+        refreshLine(l);
+        if (freeHintsCallback) freeHintsCallback(hint);
+        return 1;
+    }
+    if (freeHintsCallback) freeHintsCallback(hint);
+    return 0;
 }
 
 /* Substitute the currently edited line with the next or previous history
@@ -2007,6 +2068,7 @@ char *linenoiseEditFeed(struct linenoiseState *l) {
         linenoiseEditMoveLeft(l);
         break;
     case CTRL_F:     /* ctrl-f */
+        if (linenoiseHintAccept(l)) break;
         linenoiseEditMoveRight(l);
         break;
     case CTRL_P:    /* ctrl-p */
@@ -2056,6 +2118,7 @@ char *linenoiseEditFeed(struct linenoiseState *l) {
                     linenoiseEditHistoryNext(l, LINENOISE_HISTORY_NEXT);
                     break;
                 case 'C': /* Right */
+                    if (linenoiseHintAccept(l)) break;
                     linenoiseEditMoveRight(l);
                     break;
                 case 'D': /* Left */
@@ -2353,6 +2416,18 @@ int linenoiseHistoryAdd(const char *line) {
     history[history_len] = linecopy;
     history_len++;
     return 1;
+}
+
+/* Return the number of entries currently kept in the history. */
+int linenoiseHistoryLength(void) {
+    return history_len;
+}
+
+/* Return a pointer to the history entry at 'index' (0 = oldest,
+ * linenoiseHistoryLength()-1 = newest), or NULL when out of range. */
+const char *linenoiseHistoryGet(int index) {
+    if (index < 0 || index >= history_len) return NULL;
+    return history[index];
 }
 
 /* Set the maximum length for the history. This function can be called even

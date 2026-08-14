@@ -244,6 +244,9 @@ MSG_ERR_VERIFY_ARG
  "VERIFY must be ON or OFF.\n"
 ---
 
+MSG_ERR_STARSHIP_NOT_FOUND
+ "Starship is not installed or not in PATH. Install it from https://starship.rs and try again.\n"
+---
 
 MSG_ASK_OVERWRITE
  "Overwrite %s? (Y/N) "
@@ -737,3 +740,17 @@ MSG_HELP_CMD
 "  /V:ON   Enable delayed environment variable expansion.\n"
 "  /V:OFF  Disable delayed environment variable expansion (default).\n"
 "\n"
+---
+
+MSG_HELP_STARSHIP
+"Controls the Starship cross-shell prompt.\n"
+"\n"
+"STARSHIP [init|off] [/?]\n"
+"\n"
+"  init   Enable the Starship prompt (requires the 'starship' binary in PATH).\n"
+"  off    Disable the Starship prompt and restore the normal prompt.\n"
+"\n"
+"With no arguments, shows whether the Starship prompt is enabled.\n"
+"\n"
+"Starship renders the prompt as an external program, so the PROMPT variable\n"
+"is ignored while it is active. See https://starship.rs for configuration.\n"

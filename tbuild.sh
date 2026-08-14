@@ -23,12 +23,15 @@ else
     SYSVFLAGS=""
 fi
 
+# All build output goes into the build/ directory.
+mkdir -p build
+
 # Compile for cmd.exe.
 for src in *.c; do
     # shellcheck disable=SC2006
     # Support Bourne Shell.
     name=`basename "$src" .c`
-    obj="$name.cmd.o"
+    obj="build/$name.cmd.o"
     set -- "$CC" -c "$src" -o "$obj" -DLIBCMD_NO_VSNPRINTF=1 $SYSVFLAGS
     if [ "$V" = "1" ]; then
         echo "$*"
@@ -41,13 +44,13 @@ for src in *.c; do
 done
 
 # Link for cmd.exe.
-set -- "$CC" *.cmd.o -o cmd.exe
+set -- "$CC" build/*.cmd.o -o build/cmd.exe
 if [ "$V" = "1" ]; then
     echo "$*"
 fi
 "$@" || (echo "Link failed, trying makefile or use SYSV=0 environment variable to build?" && exit 1)
-if [ ! -f cmd.exe ]; then
-    mv a.out cmd.exe
+if [ ! -f build/cmd.exe ]; then
+    mv a.out build/cmd.exe
 fi
 
 # Compile for COMMAND.COM.
@@ -55,7 +58,7 @@ for src in *.c; do
     # shellcheck disable=SC2006
     # Support Bourne Shell.
     name=`basename "$src" .c`
-    obj="$name.COMMAND.o"
+    obj="build/$name.COMMAND.o"
     set -- "$CC" -c "$src" -o "$obj" -DLIBCMD_NO_VSNPRINTF=1 -DENABLE_AUTOEXEC=1 $SYSVFLAGS
     if [ "$V" = "1" ]; then
         echo "$*"
@@ -68,11 +71,11 @@ for src in *.c; do
 done
 
 # Link for COMMAND.COM.
-set -- "$CC" *.COMMAND.o -o COMMAND.COM
+set -- "$CC" build/*.COMMAND.o -o build/COMMAND.COM
 if [ "$V" = "1" ]; then
     echo "$*"
 fi
 "$@" || (echo "Link failed, trying makefile or use SYSV=0 environment variable to build?" && exit 1)
-if [ ! -f COMMAND.COM ]; then
-    mv a.out COMMAND.COM
+if [ ! -f build/COMMAND.COM ]; then
+    mv a.out build/COMMAND.COM
 fi

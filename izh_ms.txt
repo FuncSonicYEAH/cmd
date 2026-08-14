@@ -243,6 +243,10 @@ MSG_ERR_VERIFY_ARG
 "验证必须是开或关。"
 ---
 
+MSG_ERR_STARSHIP_NOT_FOUND
+"未安装 Starship，或它不在路径中。请从 https://starship.rs 安装然后重试。\n"
+---
+
 MSG_ASK_OVERWRITE
 "覆盖百分比？（Y/N）"
 ---
@@ -732,3 +736,17 @@ MSG_HELP_CMD
 " /F：OFF 禁用文件和目录名补全（默认）。\n"
 "/V：ON 启用延迟环境变量扩展。\n"
 " /V：OFF 禁用延迟环境变量扩展（默认）。\n"
+---
+
+MSG_HELP_STARSHIP
+"控制 Starship 跨 Shell 提示符。\n"
+"\n"
+"STARSHIP [init|off] [/?]\n"
+"\n"
+"  init  启用 Starship 提示符（需要在路径中的“starship”程序）。\n"
+"  off   禁用 Starship 提示符并还原正常提示符。\n"
+"\n"
+"在没有参数的情况下，显示 Starship 提示符是否已启用。\n"
+"\n"
+"Starship 由外部程序渲染提示符，当其处于活动状态时，将忽略 PROMPT 变量。\n"
+"有关配置，请参见 https://starship.rs。\n"

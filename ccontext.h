@@ -119,6 +119,10 @@ typedef struct cmd_context {
     char prompt_string[256];  /* current prompt format string  */
     char cmdline[CMD_MAX_LINE * 2]; /* original command line (%CMDCMDLINE%) */
 
+    /* --- starship prompt --- */
+    int        starship;                /* 1 = render prompt via starship   */
+    long long  starship_line_start_ms;  /* monotonic ms when last line was submitted */
+
     /* --- install prefix (for autorun, etc.) --- */
     char prefix[CMD_MAX_PATH];
 } cmd_context_t;
@@ -195,5 +199,9 @@ int         cmd_exec_node(cmd_context_t *ctx, cmd_node_t *node);
 int  cmd_apply_redir(cmd_context_t *ctx, cmd_node_t *node);
 void cmd_restore_redir(cmd_context_t *ctx,
                        int old_stdin, int old_stdout, int old_stderr);
+
+/* bstarship.c */
+int  cmd_starship_prompt(cmd_context_t *ctx, char *out, size_t out_size);
+long long cmd_starship_monotonic_ms(void);
 
 #endif
