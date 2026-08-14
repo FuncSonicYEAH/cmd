@@ -119,6 +119,35 @@
 #include "glinenoise.h"
 #include "glibcmd.h"
 
+#ifdef USE_CLINK_INPUT
+/* Clink input backend bridge (clink_input.cpp).  When active, raw-mode setup
+ * and all byte reads during line editing are routed through the Clink Unix
+ * terminal input backend (unix_terminal_in). */
+int clink_input_begin(void);
+void clink_input_end(void);
+int clink_input_read(void);
+
+/* input_terminal_resize from unix_terminal_in.h. */
+#define CLINK_INPUT_RESIZE ((int)0x80000002)
+
+/* Read one raw byte through Clink.  Returns 1 on success, -1 on EOF/error.
+ * Terminal resizes are swallowed and we keep waiting for real input. */
+static int readRaw(int fd, char *dst) {
+    (void)fd;
+    for (;;) {
+        int c = clink_input_read();
+        if (c == CLINK_INPUT_RESIZE) continue;
+        if (c < 0) return -1;
+        *dst = (char)c;
+        return 1;
+    }
+}
+#else
+static int readRaw(int fd, char *dst) {
+    return read(fd, dst, 1);
+}
+#endif
+
 /* C89 has no <stdint.h>.  A Unicode code point fits in 21 bits; C89
  * guarantees unsigned long is at least 32 bits wide on every target,
  * so it is used instead of uint32_t.  The type is named libcmd_uint32_t
@@ -147,7 +176,9 @@ static void refreshLineWithCompletion(struct linenoiseState *ls, linenoiseComple
 static void refreshLineWithFlags(struct linenoiseState *l, int flags);
 static void linenoiseFoldClear(struct linenoiseState *l);
 
+#ifndef USE_CLINK_INPUT
 static struct termios orig_termios; /* In order to restore at exit.*/
+#endif
 static int maskmode = 0; /* Show "***" instead of input. For passwords. */
 static int rawmode = 0; /* For atexit() function to check if restore is needed*/
 static int rawmode_output = STDOUT_FILENO; /* fd used for terminal escapes. */
@@ -594,6 +625,33 @@ static int isUnsupportedTerm(void) {
 
 /* Raw mode: 1960 magic shit. */
 static int enableRawMode(int fd) {
+#ifdef USE_CLINK_INPUT
+    (void)fd;
+    /* Test mode: when LINENOISE_ASSUME_TTY is set, skip terminal setup.
+     * This allows testing via pipes without a real terminal. */
+    if (getenv("LINENOISE_ASSUME_TTY")) {
+        rawmode = 1;
+        return 0;
+    }
+
+    if (!isatty(STDIN_FILENO)) goto fatal;
+    if (!atexit_registered) {
+        atexit(linenoiseAtExit);
+        atexit_registered = 1;
+    }
+    if (clink_input_begin() != 0) goto fatal;
+    rawmode = 1;
+    /* Ask the terminal to wrap paste input between ESC[200~ and ESC[201~.
+     * Skip this on terminals that don't understand ANSI escape sequences. */
+    if (!isUnsupportedTerm()) {
+        if (write(rawmode_output, "\033[?2004h", 8) == -1) {}
+    }
+    return 0;
+
+fatal:
+    errno = ENOTTY;
+    return -1;
+#else
     struct termios raw;
 
     /* Test mode: when LINENOISE_ASSUME_TTY is set, skip terminal setup.
@@ -638,9 +696,28 @@ static int enableRawMode(int fd) {
 fatal:
     errno = ENOTTY;
     return -1;
+#endif
 }
 
 static void disableRawMode(int fd) {
+#ifdef USE_CLINK_INPUT
+    (void)fd;
+    /* Test mode: nothing to restore. */
+    if (getenv("LINENOISE_ASSUME_TTY")) {
+        rawmode = 0;
+        return;
+    }
+    /* Don't even check the return value as it's too late. */
+    if (rawmode) {
+        /* Leave bracketed paste mode when leaving raw mode.
+         * Skip this on terminals that don't understand ANSI escape sequences. */
+        if (!isUnsupportedTerm()) {
+            if (write(rawmode_output, "\033[?2004l", 8) == -1) {}
+        }
+        clink_input_end();
+        rawmode = 0;
+    }
+#else
     /* Test mode: nothing to restore. */
     if (getenv("LINENOISE_ASSUME_TTY")) {
         rawmode = 0;
@@ -655,6 +732,7 @@ static void disableRawMode(int fd) {
         }
         rawmode = 0;
     }
+#endif
 }
 
 /* Use the ESC [6n escape sequence to query the horizontal cursor position
@@ -1896,7 +1974,7 @@ static void linenoiseEditPaste(struct linenoiseState *l) {
 
     while (1) {
         char c;
-        if (read(l->ifd, &c, 1) != 1) break;
+        if (readRaw(l->ifd, &c) != 1) break;
 
         /* Track a possible ESC[201~ terminator without copying it into the
          * paste. If it turns out to be ordinary input, flush the partial
@@ -1989,7 +2067,7 @@ char *linenoiseEditFeed(struct linenoiseState *l) {
      * count limits. */
     if (!isatty(l->ifd) && !getenv("LINENOISE_ASSUME_TTY")) return linenoiseNoTTY();
 
-    nread = read(l->ifd,&c,1);
+    nread = readRaw(l->ifd,&c);
     if (nread < 0) {
         return (errno == EAGAIN || errno == EWOULDBLOCK) ? linenoiseEditMore : NULL;
     } else if (nread == 0) {
@@ -2081,8 +2159,8 @@ char *linenoiseEditFeed(struct linenoiseState *l) {
         /* Read the next two bytes representing the escape sequence.
          * Use two calls to handle slow terminals returning the two
          * chars at different times. */
-        if (read(l->ifd,seq,1) == -1) break;
-        if (read(l->ifd,seq+1,1) == -1) break;
+        if (readRaw(l->ifd,&seq[0]) == -1) break;
+        if (readRaw(l->ifd,&seq[1]) == -1) break;
 
         /* ESC [ sequences. */
         if (seq[0] == '[') {
@@ -2094,7 +2172,7 @@ char *linenoiseEditFeed(struct linenoiseState *l) {
                 param[0] = seq[1];
                 while (plen < sizeof(param)) {
                     char p;
-                    if (read(l->ifd,&p,1) != 1) break;
+                    if (readRaw(l->ifd,&p) != 1) break;
                     if (p >= '0' && p <= '9') {
                         param[plen++] = p;
                     } else {
@@ -2158,7 +2236,7 @@ char *linenoiseEditFeed(struct linenoiseState *l) {
                 /* Read remaining bytes of the UTF-8 sequence. */
                 int i;
                 for (i = 1; i < utf8len; i++) {
-                    if (read(l->ifd, utf8+i, 1) != 1) break;
+                    if (readRaw(l->ifd, utf8+i) != 1) break;
                 }
             }
             if (linenoiseEditInsert(l, utf8, utf8len)) return NULL;
@@ -2255,7 +2333,7 @@ void linenoisePrintKeyCodes(void) {
         char c;
         int nread;
 
-        nread = read(STDIN_FILENO,&c,1);
+        nread = readRaw(STDIN_FILENO,&c);
         if (nread <= 0) continue;
         memmove(quit,quit+1,sizeof(quit)-1); /* shift string to left. */
         quit[sizeof(quit)-1] = c; /* Insert current char on the right. */

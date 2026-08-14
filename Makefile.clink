@@ -1,0 +1,51 @@
+#!/usr/bin/make -f
+# Makefile.clink - build cmd with the Clink Unix terminal input backend.
+#
+# Produces a test-only binary in build/clink/ (nothing is installed):
+#   build/clink/cmd.exe
+#
+# Line editing runs on the Clink terminal layer (unix_terminal_in) via the
+# USE_CLINK_INPUT seams in llinenoise.c, instead of linenoise's own termios
+# handling.  The Clink port sources are taken from the clink-posix tree.
+
+CC ?= cc
+CXX ?= c++
+RM ?= rm -f
+
+CFLAGS ?= -O2 -Wall -Wextra -Wpedantic
+CLINK_POSIX ?= /home/kazarto/App/cmd-clink-backup/clink-posix
+BUILD_DIR ?= build/clink
+
+CMD_SRCS = $(wildcard *.c)
+OBJS = $(patsubst %.c,$(BUILD_DIR)/%.o,$(CMD_SRCS))
+
+# Only llinenoise.c needs the clink input seams; the rest compile as usual.
+$(BUILD_DIR)/llinenoise.o: CFLAGS += -DUSE_CLINK_INPUT
+
+CLINK_SRCS = port_types unix_screen_buffer unix_terminal_in
+CLINK_OBJS = $(patsubst %,$(BUILD_DIR)/clink_%.o,$(CLINK_SRCS))
+BRIDGE_OBJ = $(BUILD_DIR)/clink_input.o
+
+CXXFLAGS = -O2 -Wall -std=c++17 -I$(CLINK_POSIX)/terminal
+
+.PHONY: all clean
+
+all: $(BUILD_DIR)/cmd.exe
+
+$(BUILD_DIR)/%.o: %.c
+	@mkdir -p $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/clink_%.o: $(CLINK_POSIX)/terminal/%.cpp
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/clink_input.o: clink_input.cpp
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/cmd.exe: $(OBJS) $(CLINK_OBJS) $(BRIDGE_OBJ)
+	$(CXX) $^ -o $@
+
+clean:
+	$(RM) -r $(BUILD_DIR)
