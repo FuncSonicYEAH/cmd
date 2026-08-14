@@ -438,28 +438,58 @@ static int utf8CharWidth(libcmd_uint32_t cp) {
     return 1; /* Default: single width */
 }
 
-/* If s[] points at an ANSI CSI escape sequence (e.g. a color change like
- * ESC [ 1 ; 32 m), return its length in bytes. Otherwise return 0.
+/* If s[] points at an ANSI escape sequence, return its length in bytes.
+ * Otherwise return 0.  The caller must have already verified that
+ * s[0] == ESC (0x1b).  Handles:
  *
- * The caller must have already verified that s[0] == ESC (0x1b). The
- * sequence layout follows ECMA-48: ESC '[' , parameter bytes (0x30-0x3f),
- * intermediate bytes (0x20-0x2f), and a final byte (0x40-0x7e). */
+ *   - CSI:   ESC '[' params (0x30-0x3f) intermediate (0x20-0x2f)
+ *            final (0x40-0x7e), e.g. colors and cursor movement.
+ *   - OSC:   ESC ']' payload terminated by BEL (0x07) or ST (ESC '\\'),
+ *            e.g. window titles (OSC 0) and hyperlinks (OSC 8).
+ *   - Other control/charset selections: ESC C, ESC (X, ESC )X, ESC #8.
+ */
 static size_t ansiEscapeLen(const char *s, size_t len) {
     size_t i;
-    if (len < 2 || s[1] != '[') return 0;
-    i = 2;
-    while (i < len && (unsigned char)s[i] >= 0x30 && (unsigned char)s[i] <= 0x3f) i++;
-    while (i < len && (unsigned char)s[i] >= 0x20 && (unsigned char)s[i] <= 0x2f) i++;
-    if (i >= len || (unsigned char)s[i] < 0x40 || (unsigned char)s[i] > 0x7e) return 0;
-    return i + 1;
+    if (len < 2) return 0;
+
+    if (s[1] == '[') {
+        i = 2;
+        while (i < len && (unsigned char)s[i] >= 0x30 && (unsigned char)s[i] <= 0x3f) i++;
+        while (i < len && (unsigned char)s[i] >= 0x20 && (unsigned char)s[i] <= 0x2f) i++;
+        if (i >= len || (unsigned char)s[i] < 0x40 || (unsigned char)s[i] > 0x7e) return 0;
+        return i + 1;
+    }
+
+    if (s[1] == ']') {
+        /* OSC runs until BEL or the ST terminator (ESC backslash). */
+        i = 2;
+        while (i < len) {
+            if (s[i] == 0x07) return i + 1;
+            if (s[i] == 0x1b && i + 1 < len && s[i + 1] == '\\') return i + 2;
+            i++;
+        }
+        return 0; /* unterminated OSC: treat as ordinary bytes */
+    }
+
+    if ((unsigned char)s[1] >= 0x20 && (unsigned char)s[1] <= 0x7e) {
+        /* Independent control (ESC C) or a 2-byte selection, plus the
+         * 3-byte charset forms ESC (X, ESC )X, ESC #8, ESC %G. */
+        size_t extra = 0;
+        if ((s[1] == '(' || s[1] == ')' || s[1] == '#' || s[1] == '%') &&
+            len >= 3 && (unsigned char)s[2] >= 0x20 && (unsigned char)s[2] <= 0x7e)
+            extra = 1;
+        return 2 + extra;
+    }
+
+    return 0;
 }
 
 /* Calculate the display width of a UTF-8 string of 'len' bytes.
  * This is used for cursor positioning in the terminal.
  * Handles grapheme clusters: characters joined by ZWJ contribute 0 width
  * after the first character in the sequence.
- * ANSI CSI escape sequences (e.g. color codes in the prompt) are treated
- * as zero-width. */
+ * ANSI escape sequences (CSI, OSC, and control/charset selections) are
+ * treated as zero-width. */
 static size_t utf8StrWidth(const char *s, size_t len) {
     size_t width = 0;
     size_t i = 0;
@@ -474,6 +504,24 @@ static size_t utf8StrWidth(const char *s, size_t len) {
          * Checked before the ZWJ state so a stray ZWJ immediately
          * followed by ESC cannot swallow the ESC byte. */
         if (cp == 0x1b) {
+            /* Save Cursor (ESC 7) ... Restore Cursor (ESC 8): oh-my-posh
+             * wraps a right-aligned segment (e.g. a clock) in SC/RC so the
+             * input cursor is restored to before it.  The whole region adds
+             * no net display width for cursor positioning. */
+            if (i + 1 < len && s[i + 1] == '7') {
+                size_t j = i + 2;
+                while (j + 1 < len) {
+                    if (s[j] == 0x1b && s[j + 1] == '8') {
+                        j += 2;
+                        break;
+                    }
+                    j++;
+                }
+                if (j <= len) {
+                    i = j;
+                    continue;
+                }
+            }
             size_t skip = ansiEscapeLen(s + i, len - i);
             if (skip > 0) {
                 i += skip;
@@ -1828,6 +1876,17 @@ int linenoiseEditStart(struct linenoiseState *l, int stdin_fd, int stdout_fd, ch
     linenoiseHistoryAdd("");
 
     if (write(l->ofd,prompt,l->plen) == -1) return -1;
+
+    /* The prompt may have wrapped in the terminal (it is wider than the
+     * terminal or exactly fills it). Track the rows it occupied and the
+     * cursor's relative row so the first refresh can clean the whole
+     * region, otherwise a wrapped prompt is duplicated and pushed down by
+     * one row on the very first keystroke. */
+    {
+        size_t pwidth = utf8StrWidth(prompt, l->plen);
+        l->oldrows = (pwidth + l->cols - 1) / l->cols;
+        l->oldrpos = (pwidth + l->cols) / l->cols;
+    }
     return 0;
 }
 

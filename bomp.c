@@ -27,6 +27,49 @@
  * unknown flags, so a second attempt drops the newer flags.
  * ---------------------------------------------------------------------- */
 
+/* Remove OSC 0 (window title) sequences from buf in place.  The first title
+ * is re-emitted to the terminal once so the window title still updates,
+ * instead of being resent (with its trailing BEL) on every line-editor
+ * redraw.  Returns the captured title payload, or NULL when there was none. */
+static const char *omp_set_title_once(char *buf)
+{
+    char *rd = buf;
+    char *wr = buf;
+    const char *title = NULL;
+
+    while (*rd != '\0')
+    {
+        if ((unsigned char)rd[0] == 0x1b && rd[1] == ']' && rd[2] == '0')
+        {
+            char *p = rd + 3;
+            char *payload;
+            if (*p == ';')
+            {
+                p++;
+                payload = p;
+                while (*p != '\0' && *p != 0x07 &&
+                       !(*p == 0x1b && p[1] == '\\'))
+                    p++;
+                if (*p == '\0')
+                    break; /* unterminated: leave the remainder intact */
+                if (title == NULL && p != payload)
+                {
+                    fputs("\x1b]0;", stdout);
+                    fwrite(payload, 1, (size_t)(p - payload), stdout);
+                    fputc(0x07, stdout);
+                    fflush(stdout);
+                    title = payload;
+                }
+                rd = (*p == 0x07) ? p + 1 : p + 2;
+                continue;
+            }
+        }
+        *wr++ = *rd++;
+    }
+    *wr = '\0';
+    return title;
+}
+
 int cmd_omp_prompt(cmd_context_t *ctx, char *out, size_t out_size)
 {
     char exec_path[CMD_MAX_PATH];
@@ -123,6 +166,7 @@ int cmd_omp_prompt(cmd_context_t *ctx, char *out, size_t out_size)
     }
 
     out[total] = '\0';
+    omp_set_title_once(out);
     return (int)total;
 }
 
